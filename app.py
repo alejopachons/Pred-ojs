@@ -21,14 +21,17 @@ if uploaded_file:
     with st.form("form_variable_selection"):
         st.subheader("Selecciona las variables para el modelo")
         numeric_columns = df.select_dtypes(include=["number"]).columns.tolist()
-        features = st.multiselect("Variables independientes (X)", numeric_columns)
-        target = st.selectbox("Variable objetivo (Y)", numeric_columns)
+        
+        # Modified for single X and Y selection
+        x_column = st.selectbox("Variable independiente (X)", numeric_columns)
+        y_column = st.selectbox("Variable objetivo (Y)", numeric_columns)
+        
         submitted = st.form_submit_button("Comparar modelos")
 
-    if submitted and features and target:
+    if submitted and x_column and y_column:
         try:
-            X = df[features]
-            y = df[target]
+            X = df[[x_column]]  # X must be a DataFrame
+            y = df[y_column]
 
             # -------------------------
             # Random Forest
@@ -65,7 +68,7 @@ if uploaded_file:
             # -------------------------
             st.subheader("📊 Importancia de Variables")
             importance_df = pd.DataFrame({
-                "Variable": features,
+                "Variable": [x_column], # Only one X variable now
                 "Random Forest (%)": rf_importances * 100,
                 "Gradient Boosting (%)": gb_importances * 100
             })
@@ -78,6 +81,21 @@ if uploaded_file:
             plt.title("Importancia de Variables por Modelo")
             plt.xlabel("Importancia (%)")
             st.pyplot(fig)
+            
+            # -------------------------
+            # Correlación de variables
+            # -------------------------
+            st.subheader("📉 Correlación entre X e Y")
+            correlation = df[[x_column, y_column]].corr().iloc[0, 1]
+            st.write(f"La correlación entre {x_column} e {y_column} es: {correlation:.2f}")
+            
+            # Gráfico de dispersión
+            fig_scatter, ax_scatter = plt.subplots()
+            sns.scatterplot(x=df[x_column], y=df[y_column], ax=ax_scatter)
+            plt.title(f"Gráfico de Dispersión: {x_column} vs. {y_column}")
+            plt.xlabel(x_column)
+            plt.ylabel(y_column)
+            st.pyplot(fig_scatter)
 
         except Exception as e:
             st.error(f"Error al procesar el modelo: {e}")
