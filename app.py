@@ -2,14 +2,13 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 
 st.set_page_config(page_title="Comparación de Modelos", layout="centered")
 
 st.title("🔍 Comparación de Importancia de Variables entre Modelos")
-st.write("Sube un archivo Excel para comparar modelos de regresión y su análisis de importancia de variables.")
+st.write("Sube un archivo Excel para comparar RandomForest y GradientBoosting en regresión.")
 
 # Cargar archivo
 uploaded_file = st.file_uploader("📂 Sube tu archivo Excel (.xlsx o .xls)", type=["xlsx", "xls"])
@@ -32,54 +31,52 @@ if uploaded_file:
             y = df[target]
 
             # -------------------------
-            # Entrenar RandomForest
+            # Random Forest
             # -------------------------
             rf_model = RandomForestRegressor(random_state=0)
             rf_model.fit(X, y)
             rf_pred = rf_model.predict(X)
             rf_importances = rf_model.feature_importances_
-
-            # -------------------------
-            # Entrenar LinearRegression
-            # -------------------------
-            lr_model = LinearRegression()
-            lr_model.fit(X, y)
-            lr_pred = lr_model.predict(X)
-            lr_coefficients = lr_model.coef_
-
-            # -------------------------
-            # Métricas
-            # -------------------------
             rf_r2 = r2_score(y, rf_pred)
-            lr_r2 = r2_score(y, lr_pred)
-
             rf_mae = mean_absolute_error(y, rf_pred)
-            lr_mae = mean_absolute_error(y, lr_pred)
 
+            # -------------------------
+            # Gradient Boosting
+            # -------------------------
+            gb_model = GradientBoostingRegressor(random_state=0)
+            gb_model.fit(X, y)
+            gb_pred = gb_model.predict(X)
+            gb_importances = gb_model.feature_importances_
+            gb_r2 = r2_score(y, gb_pred)
+            gb_mae = mean_absolute_error(y, gb_pred)
+
+            # -------------------------
+            # Métricas comparativas
+            # -------------------------
             st.subheader("📈 Comparación de desempeño (sobre datos de entrenamiento)")
             st.write(pd.DataFrame({
-                "Modelo": ["Random Forest", "Linear Regression"],
-                "R²": [rf_r2, lr_r2],
-                "MAE": [rf_mae, lr_mae]
+                "Modelo": ["Random Forest", "Gradient Boosting"],
+                "R²": [rf_r2, gb_r2],
+                "MAE": [rf_mae, gb_mae]
             }))
 
             # -------------------------
-            # Comparar importancia
+            # Importancia de variables
             # -------------------------
-            st.subheader("📊 Importancia / Coeficientes de Variables")
+            st.subheader("📊 Importancia de Variables")
             importance_df = pd.DataFrame({
                 "Variable": features,
-                "RandomForest": rf_importances * 100,
-                "LinearRegression": lr_coefficients
+                "Random Forest (%)": rf_importances * 100,
+                "Gradient Boosting (%)": gb_importances * 100
             })
 
             st.dataframe(importance_df)
 
-            # Gráfico comparativo
+            # Gráfico
             fig, ax = plt.subplots(figsize=(8, 6))
-            importance_df.set_index("Variable")[["RandomForest", "LinearRegression"]].plot.barh(ax=ax)
-            plt.title("Comparación de Importancia / Coeficientes por Variable")
-            plt.xlabel("Valor")
+            importance_df.set_index("Variable")[["Random Forest (%)", "Gradient Boosting (%)"]].plot.barh(ax=ax)
+            plt.title("Importancia de Variables por Modelo")
+            plt.xlabel("Importancia (%)")
             st.pyplot(fig)
 
         except Exception as e:
