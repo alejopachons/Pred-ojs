@@ -22,7 +22,7 @@ if uploaded_file:
         st.subheader("Selecciona las variables para el modelo")
         numeric_columns = df.select_dtypes(include=["number"]).columns.tolist()
         features = st.multiselect("Variables independientes (X)", numeric_columns)
-        target = st.selectbox("Variable objetivo (Y)", df.columns.tolist())
+        target = st.selectbox("Variable objetivo (Y)", numeric_columns)
         submitted = st.form_submit_button("Comparar modelos")
 
     if submitted and features and target:
