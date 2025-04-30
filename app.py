@@ -36,7 +36,7 @@ if uploaded_file:
             importances = model.feature_importances_
             results = pd.DataFrame({
                 "Variable": features,
-                "Importancia": importances
+                "Importancia": importances * 100
             }).sort_values(by="Importancia", ascending=False)
 
             st.subheader("📊 Importancia de cada variable")
