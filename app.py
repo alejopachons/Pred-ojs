@@ -21,17 +21,14 @@ if uploaded_file:
     with st.form("form_variable_selection"):
         st.subheader("Selecciona las variables para el modelo")
         numeric_columns = df.select_dtypes(include=["number"]).columns.tolist()
-        
-        # Modified for single X and Y selection
-        x_column = st.selectbox("Variable independiente (X)", numeric_columns)
-        y_column = st.selectbox("Variable objetivo (Y)", numeric_columns)
-        
+        features = st.multiselect("Variables independientes (X)", numeric_columns)
+        target = st.selectbox("Variable objetivo (Y)", numeric_columns)
         submitted = st.form_submit_button("Comparar modelos")
 
-    if submitted and x_column and y_column:
+    if submitted and features and target:
         try:
-            X = df[[x_column]]  # X must be a DataFrame
-            y = df[y_column]
+            X = df[features]
+            y = df[target]
 
             # -------------------------
             # Random Forest
@@ -68,34 +65,33 @@ if uploaded_file:
             # -------------------------
             st.subheader("📊 Importancia de Variables")
             importance_df = pd.DataFrame({
-                "Variable": [x_column], # Only one X variable now
+                "Variable": features,
                 "Random Forest (%)": rf_importances * 100,
                 "Gradient Boosting (%)": gb_importances * 100
             })
 
             st.dataframe(importance_df)
 
-            # Gráfico
-            fig, ax = plt.subplots(figsize=(8, 6))
-            importance_df.set_index("Variable")[["Random Forest (%)", "Gradient Boosting (%)"]].plot.barh(ax=ax)
+            # Gráfico de importancia
+            fig_importance, ax_importance = plt.subplots(figsize=(8, 6))
+            importance_df.set_index("Variable")[["Random Forest (%)", "Gradient Boosting (%)"]].plot.barh(ax=ax_importance)
             plt.title("Importancia de Variables por Modelo")
             plt.xlabel("Importancia (%)")
-            st.pyplot(fig)
-            
+            st.pyplot(fig_importance)
+
             # -------------------------
             # Correlación de variables
             # -------------------------
-            st.subheader("📉 Correlación entre X e Y")
-            correlation = df[[x_column, y_column]].corr().iloc[0, 1]
-            st.write(f"La correlación entre {x_column} e {y_column} es: {correlation:.2f}")
-            
-            # Gráfico de dispersión
-            fig_scatter, ax_scatter = plt.subplots()
-            sns.scatterplot(x=df[x_column], y=df[y_column], ax=ax_scatter)
-            plt.title(f"Gráfico de Dispersión: {x_column} vs. {y_column}")
-            plt.xlabel(x_column)
-            plt.ylabel(y_column)
-            st.pyplot(fig_scatter)
+            st.subheader("🔥 Correlación entre Variables")
+            corr_matrix = df[features + [target]].corr()  # Calculate correlation
+            st.dataframe(corr_matrix)
+
+            # Gráfico de correlación (heatmap)
+            fig_corr, ax_corr = plt.subplots(figsize=(10, 8))
+            sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", ax=ax_corr)
+            plt.title("Matriz de Correlación")
+            st.pyplot(fig_corr)
+
 
         except Exception as e:
             st.error(f"Error al procesar el modelo: {e}")
