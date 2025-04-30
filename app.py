@@ -32,6 +32,10 @@ if uploaded_file:
             # Entrenar modelo
             model = RandomForestRegressor(random_state=0)
             model.fit(X, y)
+            
+            # Distribución
+            selected_col = st.selectbox("Ver distribución de una variable", df.columns)
+            sns.histplot(df[selected_col])
 
             # Importancia de variables
             importances = model.feature_importances_
