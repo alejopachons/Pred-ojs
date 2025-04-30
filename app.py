@@ -19,7 +19,8 @@ if uploaded_file:
 
     with st.form("form_variable_selection"):
         st.subheader("Selecciona las variables para el modelo")
-        features = st.multiselect("Variables independientes (X)", df.columns.tolist())
+        numeric_columns = df.select_dtypes(include=["number"]).columns.tolist()
+        features = st.multiselect("Variables independientes (X)", numeric_columns)
         target = st.selectbox("Variable objetivo (Y)", df.columns.tolist())
         submitted = st.form_submit_button("Analizar")
 
