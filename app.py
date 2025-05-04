@@ -1,69 +1,97 @@
-# app.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.metrics import mean_absolute_error, r2_score
 
-# Cargar datos
-df = pd.read_csv("Canada.csv", sep=";")
+st.set_page_config(page_title="Comparación de Modelos", layout="centered")
 
-# Limpiar datos
-df = df.rename(columns={
-    "Date": "Fecha",
-    "Round type": "Tipo de Ronda",
-    "Invitations issued": "Invitaciones",
-    "CRS score of lowest-ranked candidate invited": "CRS mínimo"
-})
+st.title("🔍 Comparación de Importancia de Variables entre Modelos")
+st.write("Sube un archivo Excel para comparar RandomForest y GradientBoosting en regresión.")
 
-df["Fecha"] = pd.to_datetime(df["Fecha"])
-df = df.sort_values("Fecha")
+# Cargar archivo
+uploaded_file = st.file_uploader("📂 Sube tu archivo Excel (.xlsx o .xls)", type=["xlsx", "xls"])
 
-# Sidebar
-st.sidebar.header("Filtros")
+if uploaded_file:
+    df = pd.read_excel(uploaded_file)
+    st.subheader("Vista previa de tus datos")
+    st.dataframe(df)
 
-# Obtener tipos únicos
-tipos_unicos = df["Tipo de Ronda"].sort_values().unique()
+    with st.form("form_variable_selection"):
+        st.subheader("Selecciona las variables para el modelo")
+        numeric_columns = df.select_dtypes(include=["number"]).columns.tolist()
+        features = st.multiselect("Variables independientes (X)", numeric_columns)
+        target = st.selectbox("Variable objetivo (Y)", numeric_columns)
+        submitted = st.form_submit_button("Comparar modelos")
 
-# Crear un diccionario de checkboxes
-selecciones = {}
-for tipo in tipos_unicos:
-    selecciones[tipo] = st.sidebar.checkbox(tipo, value=False)
+    if submitted and features and target:
+        try:
+            X = df[features]
+            y = df[target]
 
-# Filtrar según los checkboxes seleccionados
-tipos_seleccionados = [tipo for tipo, seleccionado in selecciones.items() if seleccionado]
-df_filtrado = df[df["Tipo de Ronda"].isin(tipos_seleccionados)]
+            # -------------------------
+            # Random Forest
+            # -------------------------
+            rf_model = RandomForestRegressor(random_state=0)
+            rf_model.fit(X, y)
+            rf_pred = rf_model.predict(X)
+            rf_importances = rf_model.feature_importances_
+            rf_r2 = r2_score(y, rf_pred)
+            rf_mae = mean_absolute_error(y, rf_pred)
 
-st.title("Invitaciones Express Entry (Canadá)")
+            # -------------------------
+            # Gradient Boosting
+            # -------------------------
+            gb_model = GradientBoostingRegressor(random_state=0)
+            gb_model.fit(X, y)
+            gb_pred = gb_model.predict(X)
+            gb_importances = gb_model.feature_importances_
+            gb_r2 = r2_score(y, gb_pred)
+            gb_mae = mean_absolute_error(y, gb_pred)
 
-# Gráfico 1: Invitaciones por fecha
-fig1 = px.line(df_filtrado, x="Fecha", y="Invitaciones", color="Tipo de Ronda",
-               title="Invitaciones emitidas a lo largo del tiempo xxx", markers=True)
-fig1.update_layout(
-    height=300,
-    legend=dict(
-        orientation="h",          # horizontal
-        yanchor="bottom",         # anclar por la parte inferior
-        y=-0.3,                   # mover hacia abajo (ajusta según necesites)
-        xanchor="center",
-        x=0.5                     # centrar en el eje X
-    )
-)
-st.plotly_chart(fig1, use_container_width=True)
+            # -------------------------
+            # Métricas comparativas
+            # -------------------------
+            st.subheader("📈 Comparación de desempeño (sobre datos de entrenamiento)")
+            st.write(pd.DataFrame({
+                "Modelo": ["Random Forest", "Gradient Boosting"],
+                "R²": [rf_r2, gb_r2],
+                "MAE": [rf_mae, gb_mae]
+            }))
 
-# Gráfico 2: CRS mínimo por fecha
-fig2 = px.line(df_filtrado, x="Fecha", y="CRS mínimo", color="Tipo de Ronda",
-               title="Puntaje CRS mínimo por ronda", markers=True)
-fig2.update_layout(
-        height=300,
-        legend=dict(
-            orientation="h",          # horizontal
-            yanchor="bottom",         # anclar por la parte inferior
-            y=-0.3,                   # mover hacia abajo (ajusta según necesites)
-            xanchor="center",
-            x=0.5                     # centrar en el eje X
-    )
-)
-st.plotly_chart(fig2, use_container_width=True)
+            # -------------------------
+            # Importancia de variables
+            # -------------------------
+            st.subheader("📊 Importancia de Variables")
+            importance_df = pd.DataFrame({
+                "Variable": features,
+                "Random Forest (%)": rf_importances * 100,
+                "Gradient Boosting (%)": gb_importances * 100
+            })
 
-# Mostrar tabla opcional
-with st.expander("Ver tabla de datos"):
-    st.dataframe(df_filtrado)
+            st.dataframe(importance_df)
+
+            # Gráfico de importancia
+            fig_importance, ax_importance = plt.subplots(figsize=(8, 6))
+            importance_df.set_index("Variable")[["Random Forest (%)", "Gradient Boosting (%)"]].plot.barh(ax=ax_importance)
+            plt.title("Importancia de Variables por Modelo")
+            plt.xlabel("Importancia (%)")
+            st.pyplot(fig_importance)
+
+            # -------------------------
+            # Correlación de variables
+            # -------------------------
+            st.subheader("🔥 Correlación entre Variables")
+            corr_matrix = df[features + [target]].corr()  # Calculate correlation
+            st.dataframe(corr_matrix)
+
+            # Gráfico de correlación (heatmap)
+            fig_corr, ax_corr = plt.subplots(figsize=(10, 8))
+            sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", ax=ax_corr)
+            plt.title("Matriz de Correlación")
+            st.pyplot(fig_corr)
+
+
+        except Exception as e:
+            st.error(f"Error al procesar el modelo: {e}")
