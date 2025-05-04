@@ -52,7 +52,16 @@ st.plotly_chart(fig1, use_container_width=True)
 # Gráfico 2: CRS mínimo por fecha
 fig2 = px.line(df_filtrado, x="Fecha", y="CRS mínimo", color="Tipo de Ronda",
                title="Puntaje CRS mínimo por ronda", markers=True)
-fig2.update_layout(height=300)
+fig2.update_layout(
+        height=300,
+    legend=dict(
+        orientation="h",          # horizontal
+        yanchor="bottom",         # anclar por la parte inferior
+        y=-0.3,                   # mover hacia abajo (ajusta según necesites)
+        xanchor="center",
+        x=0.5                     # centrar en el eje X
+    )
+)
 st.plotly_chart(fig2, use_container_width=True)
 
 # Mostrar tabla opcional
